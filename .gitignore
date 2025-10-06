@@ -73,3 +73,4 @@ Temporary Items
 # Personal configuration
 config.local.*
 .env.local
+*.log
