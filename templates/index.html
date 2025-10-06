@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Music Storage Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
+
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-play-circle"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <button class="btn btn-outline-primary w-100" onclick="runDryRun()">
+                            <i class="bi bi-eye"></i> Dry Run
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-primary w-100" onclick="showExecuteModal()">
+                            <i class="bi bi-gear"></i> Execute
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules Summary -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-list-check"></i> Rules Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 class="text-success">{{ rules_by_target.SSD|length }}</h4>
+                            <small class="text-muted">SSD Rules</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 class="text-primary">{{ rules_by_target.NAS|length }}</h4>
+                            <small class="text-muted">NAS Rules</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 class="text-secondary">{{ rules_by_target.Local|length }}</h4>
+                            <small class="text-muted">Local Rules</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Rules by Target -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h6><i class="bi bi-hdd"></i> SSD Rules</h6>
+                    </div>
+                    <div class="card-body p-2" style="max-height: 300px; overflow-y: auto;">
+                        {% for rule in rules_by_target.SSD[:5] %}
+                        <div class="rule-item ssd p-2 mb-1 bg-light rounded">
+                            <small class="fw-bold">{{ rule.source.split('/')[-1] }}</small><br>
+                            <small class="text-muted">{{ rule.mode }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h6><i class="bi bi-cloud"></i> NAS Rules</h6>
+                    </div>
+                    <div class="card-body p-2" style="max-height: 300px; overflow-y: auto;">
+                        {% for rule in rules_by_target.NAS[:5] %}
+                        <div class="rule-item nas p-2 mb-1 bg-light rounded">
+                            <small class="fw-bold">{{ rule.source.split('/')[-1] }}</small><br>
+                            <small class="text-muted">{{ rule.mode }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h6><i class="bi bi-laptop"></i> Local Rules</h6>
+                    </div>
+                    <div class="card-body p-2" style="max-height: 300px; overflow-y: auto;">
+                        {% for rule in rules_by_target.Local[:5] %}
+                        <div class="rule-item local p-2 mb-1 bg-light rounded">
+                            <small class="fw-bold">{{ rule.source.split('/')[-1] }}</small><br>
+                            <small class="text-muted">{{ rule.mode }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Log Statistics -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-bar-chart"></i> Log Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h5>{{ log_stats.total_lines }}</h5>
+                        <small class="text-muted">Total Lines</small>
+                    </div>
+                    <div class="col-4">
+                        <h5 class="text-warning">{{ log_stats.warnings }}</h5>
+                        <small class="text-muted">Warnings</small>
+                    </div>
+                    <div class="col-4">
+                        <h5 class="text-danger">{{ log_stats.errors }}</h5>
+                        <small class="text-muted">Errors</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Logs -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-journal-text"></i> Recent Logs</h5>
+            </div>
+            <div class="card-body p-2" style="max-height: 400px; overflow-y: auto;">
+                {% for log in recent_logs %}
+                <div class="log-line mb-1 p-1 {{ 'log-error' if 'ERROR' in log else 'log-warning' if 'WARN' in log else '' }}">
+                    {{ log }}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('logs') }}" class="btn btn-sm btn-outline-primary">View All Logs</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Execute Modal -->
+<div class="modal fade" id="executeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Execute Music Storage Manager</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="dryRun" checked>
+                        <label class="form-check-label" for="dryRun">
+                            Dry Run (no actual changes)
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="verbose">
+                        <label class="form-check-label" for="verbose">
+                            Verbose Output
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="skipNas" checked>
+                        <label class="form-check-label" for="skipNas">
+                            Skip NAS Rules (avoid mounting issues)
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="onlyFilter" class="form-label">Only Process (optional filter):</label>
+                    <input type="text" class="form-control" id="onlyFilter" placeholder="e.g., 'UVI' or 'Native'">
+                </div>
+                <div id="executeOutput" class="mt-3" style="display: none;">
+                    <h6>Output:</h6>
+                    <pre id="outputContent" class="bg-light p-2" style="max-height: 300px; overflow-y: auto;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="executeScript()">Execute</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showExecuteModal() {
+    new bootstrap.Modal(document.getElementById('executeModal')).show();
+}
+
+function runDryRun() {
+    // Show the modal first
+    showExecuteModal();
+    // Set dry run options
+    document.getElementById('dryRun').checked = true;
+    document.getElementById('verbose').checked = true;
+    // Execute immediately
+    executeScript(true);
+}
+
+async function executeScript(forceDryRun = false) {
+    const dryRun = forceDryRun || document.getElementById('dryRun').checked;
+    const verbose = document.getElementById('verbose').checked;
+    const onlyFilter = document.getElementById('onlyFilter').value;
+    const skipNas = document.getElementById('skipNas').checked;
+
+    const outputDiv = document.getElementById('executeOutput');
+    const outputContent = document.getElementById('outputContent');
+
+    outputDiv.style.display = 'block';
+    outputContent.textContent = 'Executing...\n\nSending request to server...';
+
+    try {
+        const response = await fetch('/api/execute', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                dry_run: dryRun,
+                verbose: verbose,
+                only_filter: onlyFilter,
+                skip_nas: skipNas
+            })
+        });
+
+        outputContent.textContent = 'Received response from server, processing...\n';
+
+        const result = await response.json();
+
+        outputContent.textContent = 'Response received. Status: ' + result.status + '\n';
+
+        if (result.status === 'success') {
+            let output = '';
+            if (result.command) {
+                output += 'Command: ' + result.command + '\n\n';
+            }
+            output += result.stdout;
+            if (result.stderr) {
+                output += '\n\nErrors/Warnings:\n' + result.stderr;
+            }
+            if (result.returncode !== 0) {
+                output += '\n\nReturn code: ' + result.returncode;
+            }
+            outputContent.textContent = output;
+        } else {
+            outputContent.textContent = 'Error: ' + result.message;
+        }
+    } catch (error) {
+        outputContent.textContent = 'Error: ' + error.message;
+    }
+}
+</script>
+{% endblock %}

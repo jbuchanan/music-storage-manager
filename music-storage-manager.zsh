@@ -19,8 +19,8 @@
 #
 # Configure your target roots here (or override with env vars before running):
 : ${SSD_ROOT:="/Volumes/Instruments"}        # external SSD volume mountpoint
-: ${NAS_ROOT:="/Volumes/music"}          # NAS SMB mountpoint
-: ${NAS_URL:="smb://tower.local/music"}   # Finder mount URL (relies on Keychain)
+: ${NAS_ROOT:="/Volumes/Music"}          # NAS SMB mountpoint
+: ${NAS_URL:="smb://192.168.50.3/Music"}   # Finder mount URL (relies on Keychain)
 : ${LOG_FILE:="./music-storage-manager.log"}
 
 set -o pipefail
@@ -30,6 +30,7 @@ verbose=0
 rules_file="./music-storage-rules-unified.csv"
 only_substr=""
 since_days=""
+skip_nas=0
 
 log() {
   local msg="$1"
@@ -102,7 +103,43 @@ ensure_ssd_present() {
 }
 
 usage() {
-  sed -n '1,80p' "$0"
+  cat <<-EOF
+Music Storage Manager - Move music libraries to SSD/NAS with symlinks
+
+USAGE:
+  $0 [-n] [-v] [-r RULES_FILE] [--only TARGET] [--since DAYS] [--skip-nas] [-h|--help]
+
+OPTIONS:
+  -n            Dry run (no changes, shows what would happen)
+  -v            Verbose logging
+  -r FILE       Rules file path (default: $rules_file)
+  --only X      Only process rules whose source path contains substring X
+  --since DAYS  Only move items modified within last N days
+  --skip-nas    Skip all NAS rules (only process SSD and Local rules)
+  -h, --help    Show this help
+
+CURRENT CONFIGURATION:
+  SSD Root:     $SSD_ROOT
+  NAS Root:     $NAS_ROOT
+  NAS URL:      $NAS_URL
+  Rules File:   $rules_file
+  Log File:     $LOG_FILE
+
+EXAMPLES:
+  $0 -n -v                    # Dry run with verbose output
+  $0 --only "Native"          # Only process Native Instruments libraries
+  $0 --since 30               # Only process files modified in last 30 days
+  $0 -r custom-rules.csv      # Use different rules file
+
+RULES FORMAT (pipe-delimited):
+  SOURCE_PATH | TARGET | DEST_SUBPATH | MODE
+  - SOURCE_PATH: absolute path (~ and \$HOME supported)
+  - TARGET: SSD, NAS, or Local
+  - DEST_SUBPATH: subpath under target root (blank = use folder name)
+  - MODE: move (migrate+symlink) or copy (backup only)
+
+NOTE: Mount your NAS in Finder once and save credentials to Keychain.
+EOF
   exit 0
 }
 
@@ -114,6 +151,7 @@ while [[ $# -gt 0 ]]; do
     -r) rules_file="$2"; shift 2 ;;
     --only) only_substr="$2"; shift 2 ;;
     --since) since_days="$2"; shift 2 ;;
+    --skip-nas) skip_nas=1; shift ;;
     -h|--help) usage ;;
     *) echo "Unknown arg: $1"; usage ;;
   esac
@@ -125,7 +163,17 @@ touch "$LOG_FILE" 2>/dev/null || echo "WARN: cannot write to $LOG_FILE"
 
 # Preflight
 ensure_ssd_present
-ensure_nas_mounted
+
+# Skip NAS mounting if environment variable is set (for dry runs) or --skip-nas flag is used
+if [[ -z "${MSM_SKIP_NAS_MOUNT}" && $skip_nas -eq 0 ]]; then
+  ensure_nas_mounted
+else
+  if [[ $skip_nas -eq 1 ]]; then
+    vlog "Skipping NAS mount check (--skip-nas flag is set)"
+  else
+    vlog "Skipping NAS mount check (MSM_SKIP_NAS_MOUNT is set)"
+  fi
+fi
 
 move_with_rsync() {
   local src="$1"       # original source dir (expanded)
@@ -216,7 +264,19 @@ process_rule() {
   local dest_root
   case "$target" in
     SSD|ssd) dest_root="$SSD_ROOT" ;;
-    NAS|nas) dest_root="$NAS_ROOT" ;;
+    NAS|nas)
+      dest_root="$NAS_ROOT"
+      # Skip NAS rules if --skip-nas flag is used
+      if [[ $skip_nas -eq 1 ]]; then
+        log "SKIP (NAS rules disabled): $src_expanded"
+        return
+      fi
+      # Skip NAS rules if NAS mounting was skipped
+      if [[ -n "${MSM_SKIP_NAS_MOUNT}" ]]; then
+        log "SKIP (NAS mount skipped for dry run): $src_expanded"
+        return
+      fi
+      ;;
     Local|local) log "SKIP (keeping local): $src_expanded"; return ;;
     *) log "SKIP (bad target): $src_expanded -> $target"; return ;;
   esac

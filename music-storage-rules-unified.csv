@@ -3,28 +3,23 @@
 # TARGET: SSD, NAS, or Local
 # MODE: move (migrate+symlink), copy (backup only)
 
-# High-performance libraries - keep on SSD
+# Arturia
 $HOME/Music/Samples/Arturia|SSD|Samples/Arturia|copy
+$HOME/Library/Audio/Presets/Arturia|NAS|Arturia/Presets|copy
+
+# Native Instruments
 $HOME/Music/Samples/Native Instruments|SSD|Samples/NI|move
-$HOME/Music/Samples/U-He|SSD|Samples/U-He|move
-$HOME/Music/Ableton/User Library|SSD|DAW/Ableton/User Library|move
-$HOME/Music/Audio Music Apps/Apple Loops|SSD|DAW/Logic/Apple Loops|move
-$HOME/Music/Samples/IK Multimedia/SampleTank|SSD|Samples/IKM/SampleTank|move
-
-# Native Instruments - Large libraries to NAS
-$HOME/Native Instruments/Kontakt Factory Library 2 Library|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Symphony Series String Ensemble Library|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Symphony Series Woodwind Ensemble Library|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Symphony Series Percussion Library|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Symphony Series Brass Ensemble Library|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Symphony Series Woodwind Solo Library|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Symphony Series Brass Solo Library|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Areia Lite Edition|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Session Strings 2 Library|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Studio Drummer Library|NAS|Native_Instruments/Libraries|move
-$HOME/Native Instruments/Nucleus Lite Edition|NAS|Native_Instruments/Libraries|move
-
-# Native Instruments - Keep local for performance
+$HOME/Native Instruments/Kontakt Factory Library 2 Library|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Symphony Series String Ensemble Library|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Symphony Series Woodwind Ensemble Library|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Symphony Series Percussion Library|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Symphony Series Brass Ensemble Library|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Symphony Series Woodwind Solo Library|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Symphony Series Brass Solo Library|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Areia Lite Edition|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Session Strings 2 Library|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Studio Drummer Library|SSD|Native_Instruments/Libraries|move
+$HOME/Native Instruments/Nucleus Lite Edition|SSD|Native_Instruments/Libraries|move
 $HOME/Native Instruments/Battery 4 Factory Library|Local|N/A|copy
 $HOME/Native Instruments/Analog Dreams Library|Local|N/A|copy
 $HOME/Native Instruments/Massive X Factory Library|Local|N/A|copy
@@ -37,23 +32,45 @@ $HOME/Native Instruments/Rounds|Local|N/A|copy
 $HOME/Native Instruments/Super 8|Local|N/A|copy
 $HOME/Native Instruments/Blocks Base|Local|N/A|copy
 $HOME/Native Instruments/Blocks Primes|Local|N/A|copy
-
-# System content - backup to NAS
-/Library/Application Support/Logic|NAS|Logic_Pro/Sound_Library|copy
-/Library/Application Support/Universal Audio|NAS|Universal_Audio/Content|copy
-/Library/Application Support/IK Multimedia|NAS|IK_Multimedia/Content|copy
 /Library/Application Support/Native Instruments|NAS|Native_Instruments/System_Content|copy
-
-# User settings - backup only
 $HOME/Library/Application Support/Native Instruments|NAS|Native_Instruments/User_Settings|copy
-$HOME/Library/Application Support/IK Multimedia|NAS|IK_Multimedia/User_Settings|copy
-$HOME/Library/Audio/Presets/Arturia|NAS|Arturia/Presets|copy
 $HOME/Documents/Native Instruments|NAS|Native_Instruments/User_Data|copy
-$HOME/Documents/IK Multimedia|NAS|IK_Multimedia/User_Data|copy
 
-# Projects - backup old projects
-$HOME/Music/Logic|NAS|Projects/Logic|copy
+# Sample Libraries
+$HOME/Music/Samples/U-He|SSD|Samples/U-He|move
+$HOME/Music/Samples/IK Multimedia/SampleTank|SSD|Samples/IKM/SampleTank|move
+
+# Projects
+$HOME/Music/Ableton/User Library|SSD|DAW/Ableton/User Library|copy
+$HOME/Music/Audio Music Apps/Apple Loops|SSD|DAW/Logic/Apple Loops|copy
 $HOME/Music/Ableton|NAS|Projects/Ableton|copy
 $HOME/Music/GarageBand|NAS|Projects/GarageBand|copy
 $HOME/Music/Audio Music Apps|NAS|Projects/Audio_Music_Apps|copy
 $HOME/Music/Celemony|NAS|Projects/Celemony|copy
+
+# Logic Pro
+/Library/Application Support/Logic|NAS|Logic_Pro/Sound_Library|copy
+$HOME/Music/Logic|NAS|Projects/Logic|copy
+
+# System Content
+/Library/Application Support/Universal Audio|NAS|Universal_Audio/Content|copy
+/Library/Application Support/IK Multimedia|NAS|IK_Multimedia/Content|copy
+$HOME/Library/Application Support/IK Multimedia|NAS|IK_Multimedia/User_Settings|copy
+
+# UVI Products
+/Library/Application Support/UVISoundBanks/Orchestral Suite|SSD|UVI/Orchestral_Suite|move
+/Library/Application Support/UVISoundBanks/Soundiron|SSD|UVI/Soundiron|move
+/Library/Application Support/UVISoundBanks/Vintage Vault|SSD|UVI/Vintage_Vault|move
+/Library/Application Support/UVISoundBanks/Orchestral Essentials|SSD|UVI/Orchestral_Essentials|move
+/Library/Application Support/UVISoundBanks/Falcon|SSD|UVI/Falcon|move
+/Library/Application Support/UVISoundBanks/Drum Designer|SSD|UVI/Drum_Designer|move
+/Library/Application Support/UVISoundBanks/Augmented Strings|SSD|UVI/Augmented_Strings|move
+/Library/Application Support/UVISoundBanks/Synth Anthology|SSD|UVI/Synth_Anthology|move
+/Library/Application Support/UVISoundBanks|SSD|UVI/Sound_Banks|move
+$HOME/Library/Application Support/UVI Workstation|NAS|UVI/User_Settings|copy
+$HOME/Library/Audio/Presets/UVI|NAS|UVI/Presets|copy
+$HOME/Documents/UVI|NAS|UVI/User_Data|copy
+
+# User Settings
+$HOME/Documents/IK Multimedia|NAS|IK_Multimedia/User_Data|copy
+
