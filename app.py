@@ -7,10 +7,12 @@ A Flask web application for managing music storage rules and monitoring operatio
 import os
 import csv
 import json
+import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from logging.handlers import RotatingFileHandler
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, g
 
 app = Flask(__name__)
 app.secret_key = 'music-storage-manager-secret-key'
@@ -19,7 +21,83 @@ app.secret_key = 'music-storage-manager-secret-key'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RULES_FILE = os.path.join(BASE_DIR, 'music-storage-rules-unified.csv')
 LOG_FILE = os.path.join(BASE_DIR, 'music-storage-manager.log')
+APP_LOG_FILE = os.path.join(BASE_DIR, 'music-storage-manager-app.log')
 SCRIPT_PATH = os.path.join(BASE_DIR, 'music-storage-manager.zsh')
+
+# Configure logging
+def setup_logging():
+    """Configure application logging with file and console handlers"""
+    # Create formatters
+    file_formatter = logging.Formatter(
+        '[%(asctime)s] %(levelname)s [%(name)s:%(lineno)d] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    console_formatter = logging.Formatter(
+        '%(levelname)s: %(message)s'
+    )
+
+    # File handler with rotation (10MB max, keep 5 backups)
+    file_handler = RotatingFileHandler(
+        APP_LOG_FILE,
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5
+    )
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(file_formatter)
+
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(console_formatter)
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+
+    # Configure Flask logger
+    app.logger.setLevel(logging.DEBUG)
+    app.logger.addHandler(file_handler)
+    app.logger.addHandler(console_handler)
+
+    # Reduce noise from werkzeug
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
+    app.logger.info('Logging configured successfully')
+    app.logger.debug(f'Log file: {APP_LOG_FILE}')
+
+setup_logging()
+
+# Request/Response logging middleware
+@app.before_request
+def log_request_info():
+    """Log incoming request details"""
+    g.start_time = datetime.now()
+    app.logger.debug(f'Request: {request.method} {request.path}')
+    if request.method in ['POST', 'PUT', 'PATCH']:
+        # Log request body for non-GET requests (but sanitize sensitive data)
+        if request.is_json:
+            app.logger.debug(f'Request JSON: {request.get_json()}')
+        elif request.form:
+            app.logger.debug(f'Request Form: {dict(request.form)}')
+
+@app.after_request
+def log_response_info(response):
+    """Log response details and request duration"""
+    if hasattr(g, 'start_time'):
+        duration = (datetime.now() - g.start_time).total_seconds()
+        app.logger.info(
+            f'{request.method} {request.path} - {response.status_code} '
+            f'({duration:.3f}s)'
+        )
+    return response
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Log unhandled exceptions"""
+    app.logger.error(f'Unhandled exception: {str(e)}', exc_info=True)
+    return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
 
 class RulesManager:
     def __init__(self, rules_file):
@@ -29,68 +107,81 @@ class RulesManager:
         """Load rules from CSV file"""
         rules = []
         if not os.path.exists(self.rules_file):
+            app.logger.warning(f'Rules file not found: {self.rules_file}')
             return rules
 
-        with open(self.rules_file, 'r') as f:
-            reader = csv.reader(f, delimiter='|')
-            for i, row in enumerate(reader, 1):
-                if not row or row[0].strip().startswith('#') or not row[0].strip():
-                    continue
+        try:
+            with open(self.rules_file, 'r') as f:
+                reader = csv.reader(f, delimiter='|')
+                for i, row in enumerate(reader, 1):
+                    if not row or row[0].strip().startswith('#') or not row[0].strip():
+                        continue
 
-                if len(row) >= 4:
-                    rules.append({
-                        'line': i,
-                        'source': row[0].strip(),
-                        'target': row[1].strip(),
-                        'subpath': row[2].strip(),
-                        'mode': row[3].strip()
-                    })
-                elif len(row) >= 3:
-                    rules.append({
-                        'line': i,
-                        'source': row[0].strip(),
-                        'target': row[1].strip(),
-                        'subpath': row[2].strip(),
-                        'mode': 'move'
-                    })
+                    if len(row) >= 4:
+                        rules.append({
+                            'line': i,
+                            'source': row[0].strip(),
+                            'target': row[1].strip(),
+                            'subpath': row[2].strip(),
+                            'mode': row[3].strip()
+                        })
+                    elif len(row) >= 3:
+                        rules.append({
+                            'line': i,
+                            'source': row[0].strip(),
+                            'target': row[1].strip(),
+                            'subpath': row[2].strip(),
+                            'mode': 'move'
+                        })
+            app.logger.debug(f'Loaded {len(rules)} rules from {self.rules_file}')
+        except Exception as e:
+            app.logger.error(f'Error loading rules: {e}', exc_info=True)
+
         return rules
 
     def save_rules(self, rules):
         """Save rules to CSV file"""
-        # Read original file to preserve comments
-        original_lines = []
-        if os.path.exists(self.rules_file):
-            with open(self.rules_file, 'r') as f:
-                original_lines = f.readlines()
+        try:
+            # Read original file to preserve comments
+            original_lines = []
+            if os.path.exists(self.rules_file):
+                with open(self.rules_file, 'r') as f:
+                    original_lines = f.readlines()
 
-        # Create backup
-        backup_file = f"{self.rules_file}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        if original_lines:
-            with open(backup_file, 'w') as f:
-                f.writelines(original_lines)
+            # Create backup
+            backup_file = f"{self.rules_file}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            if original_lines:
+                with open(backup_file, 'w') as f:
+                    f.writelines(original_lines)
+                app.logger.info(f'Created rules backup: {backup_file}')
 
-        # Write new rules file
-        with open(self.rules_file, 'w') as f:
-            # Write header
-            f.write("# Unified Music Storage Rules\n")
-            f.write("# SOURCE_PATH|TARGET|DEST_SUBPATH|MODE\n")
-            f.write("# TARGET: SSD, NAS, or Local\n")
-            f.write("# MODE: move (migrate+symlink), copy (backup only)\n\n")
+            # Write new rules file
+            with open(self.rules_file, 'w') as f:
+                # Write header
+                f.write("# Unified Music Storage Rules\n")
+                f.write("# SOURCE_PATH|TARGET|DEST_SUBPATH|MODE\n")
+                f.write("# TARGET: SSD, NAS, or Local\n")
+                f.write("# MODE: move (migrate+symlink), copy (backup only)\n\n")
 
-            # Group rules by category
-            categories = {}
-            for rule in rules:
-                category = self._categorize_rule(rule)
-                if category not in categories:
-                    categories[category] = []
-                categories[category].append(rule)
+                # Group rules by category
+                categories = {}
+                for rule in rules:
+                    category = self._categorize_rule(rule)
+                    if category not in categories:
+                        categories[category] = []
+                    categories[category].append(rule)
 
-            # Write rules by category
-            for category, category_rules in categories.items():
-                f.write(f"# {category}\n")
-                for rule in category_rules:
-                    f.write(f"{rule['source']}|{rule['target']}|{rule['subpath']}|{rule['mode']}\n")
-                f.write("\n")
+                # Write rules by category
+                for category, category_rules in categories.items():
+                    f.write(f"# {category}\n")
+                    for rule in category_rules:
+                        f.write(f"{rule['source']}|{rule['target']}|{rule['subpath']}|{rule['mode']}\n")
+                    f.write("\n")
+
+            app.logger.info(f'Saved {len(rules)} rules to {self.rules_file}')
+        except Exception as e:
+            app.logger.error(f'Error saving rules: {e}', exc_info=True)
+            raise
 
     def _categorize_rule(self, rule):
         """Categorize a rule based on its source path"""
@@ -121,18 +212,21 @@ class LogMonitor:
     def get_recent_logs(self, lines=50):
         """Get recent log entries"""
         if not os.path.exists(self.log_file):
+            app.logger.debug(f'Log file not found: {self.log_file}')
             return []
 
         try:
             with open(self.log_file, 'r') as f:
                 all_lines = f.readlines()
                 return [line.strip() for line in all_lines[-lines:]]
-        except Exception:
+        except Exception as e:
+            app.logger.error(f'Error reading log file: {e}', exc_info=True)
             return []
 
     def get_log_stats(self):
         """Get log statistics"""
         if not os.path.exists(self.log_file):
+            app.logger.debug(f'Log file not found for stats: {self.log_file}')
             return {'total_lines': 0, 'errors': 0, 'warnings': 0}
 
         total_lines = 0
@@ -147,8 +241,8 @@ class LogMonitor:
                         errors += 1
                     elif 'WARN' in line:
                         warnings += 1
-        except Exception:
-            pass
+        except Exception as e:
+            app.logger.error(f'Error getting log stats: {e}', exc_info=True)
 
         return {'total_lines': total_lines, 'errors': errors, 'warnings': warnings}
 
@@ -219,6 +313,7 @@ def api_execute():
 
         # Check if script exists
         if not os.path.exists(SCRIPT_PATH):
+            app.logger.error(f'Script not found: {SCRIPT_PATH}')
             return jsonify({'status': 'error', 'message': f'Script not found: {SCRIPT_PATH}'}), 404
 
         # Run the script with longer timeout and environment variables
@@ -230,7 +325,14 @@ def api_execute():
             # Skip NAS mounting for dry runs by setting a flag
             env['MSM_SKIP_NAS_MOUNT'] = '1'
 
+        app.logger.info(f'Executing script: {" ".join(cmd)}')
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=BASE_DIR, env=env)
+        app.logger.info(f'Script completed with return code: {result.returncode}')
+
+        if result.returncode != 0:
+            app.logger.warning(f'Script exited with non-zero status: {result.returncode}')
+            if result.stderr:
+                app.logger.warning(f'Script stderr: {result.stderr}')
 
         return jsonify({
             'status': 'success',
@@ -241,8 +343,10 @@ def api_execute():
         })
 
     except subprocess.TimeoutExpired:
+        app.logger.error(f'Script execution timed out after {timeout}s')
         return jsonify({'status': 'error', 'message': 'Operation timed out'}), 408
     except Exception as e:
+        app.logger.error(f'Script execution error: {e}', exc_info=True)
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/logs')
@@ -306,6 +410,7 @@ def api_clear_logs():
             # Create backup before clearing
             backup_file = f"{LOG_FILE}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             os.rename(LOG_FILE, backup_file)
+            app.logger.info(f'Created log backup before clearing: {backup_file}')
 
         # Clean up old backups - keep only last 5
         cleanup_old_backups()
@@ -314,11 +419,13 @@ def api_clear_logs():
         with open(LOG_FILE, 'w') as f:
             f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Log file cleared\n")
 
+        app.logger.info('Log file cleared successfully')
         return jsonify({
             'status': 'success',
             'message': 'Log file cleared successfully'
         })
     except Exception as e:
+        app.logger.error(f'Failed to clear logs: {e}', exc_info=True)
         return jsonify({
             'status': 'error',
             'message': f'Failed to clear logs: {str(e)}'
@@ -341,9 +448,9 @@ def cleanup_old_backups():
     for file_path in files_to_remove:
         try:
             os.remove(file_path)
-            print(f"Removed old backup: {file_path}")
+            app.logger.info(f"Removed old backup: {file_path}")
         except Exception as e:
-            print(f"Failed to remove backup {file_path}: {e}")
+            app.logger.error(f"Failed to remove backup {file_path}: {e}")
 
 if __name__ == '__main__':
     # Create templates directory if it doesn't exist
