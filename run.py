@@ -6,8 +6,16 @@ Simple script to start the Flask web application.
 
 import os
 import sys
+import logging
 import webbrowser
 from threading import Timer
+
+# Configure basic logging before importing app
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 def open_browser():
     """Open web browser after a short delay"""
@@ -19,15 +27,25 @@ if __name__ == '__main__':
 
     from app import app
 
-    print("Starting Music Storage Manager Web Interface...")
-    print("Web interface will be available at: http://127.0.0.1:5001")
-    print("Press Ctrl+C to stop")
+    logger.info("Starting Music Storage Manager Web Interface...")
+    logger.info("Web interface will be available at: http://127.0.0.1:5001")
+    logger.info("Press Ctrl+C to stop")
 
     # Open browser after 1.5 seconds
     def open_browser_new():
-        webbrowser.open('http://127.0.0.1:5001')
+        try:
+            webbrowser.open('http://127.0.0.1:5001')
+            logger.info("Opened web browser")
+        except Exception as e:
+            logger.error(f"Failed to open browser: {e}")
 
     Timer(1.5, open_browser_new).start()
 
     # Run the Flask app
-    app.run(debug=False, host='127.0.0.1', port=5001)
+    try:
+        app.run(debug=False, host='127.0.0.1', port=5001)
+    except KeyboardInterrupt:
+        logger.info("\nShutting down...")
+    except Exception as e:
+        logger.error(f"Application error: {e}", exc_info=True)
+        sys.exit(1)

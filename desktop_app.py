@@ -9,7 +9,11 @@ import threading
 import time
 import sys
 import os
+import logging
 from app import app
+
+# Get logger for desktop app
+logger = logging.getLogger('desktop_app')
 
 class DesktopApp:
     def __init__(self):
@@ -22,7 +26,7 @@ class DesktopApp:
             # Disable Flask's reloader in desktop mode
             app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
         except Exception as e:
-            print(f"Flask server error: {e}")
+            logger.error(f"Flask server error: {e}", exc_info=True)
 
     def wait_for_server(self, timeout=10):
         """Wait for Flask server to start"""
@@ -42,11 +46,11 @@ class DesktopApp:
 
     def on_window_loaded(self):
         """Called when the webview window is loaded"""
-        print("Desktop app window loaded successfully")
+        logger.info("Desktop app window loaded successfully")
 
     def on_closing(self):
         """Called when the window is about to close"""
-        print("Desktop app closing...")
+        logger.info("Desktop app closing...")
         # Graceful shutdown would go here
         return True
 
@@ -57,12 +61,12 @@ class DesktopApp:
         self.flask_thread.start()
 
         # Wait for server to start
-        print("Starting Music Storage Manager...")
+        logger.info("Starting Music Storage Manager...")
         if not self.wait_for_server():
-            print("Failed to start Flask server")
+            logger.error("Failed to start Flask server")
             sys.exit(1)
 
-        print("Server started, opening desktop window...")
+        logger.info("Server started, opening desktop window...")
 
         # Create desktop window
         window = webview.create_window(
@@ -91,19 +95,20 @@ class DesktopApp:
                 private_mode=False
             )
         except KeyboardInterrupt:
-            print("\nShutting down...")
+            logger.info("\nShutting down...")
         except Exception as e:
-            print(f"Desktop app error: {e}")
+            logger.error(f"Desktop app error: {e}", exc_info=True)
             sys.exit(1)
 
 def main():
     """Main entry point"""
     if len(sys.argv) > 1 and sys.argv[1] == '--web':
         # Run in web mode (original Flask app)
-        print("Starting in web mode...")
+        logger.info("Starting in web mode...")
         app.run(debug=True, host='127.0.0.1', port=5001)
     else:
         # Run in desktop mode
+        logger.info("Starting in desktop mode...")
         desktop_app = DesktopApp()
         desktop_app.run()
 
