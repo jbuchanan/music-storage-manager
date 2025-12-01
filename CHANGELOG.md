@@ -47,9 +47,8 @@ All notable changes to the Music Storage Manager project.
 - `desktop_app.py` - Native desktop application wrapper
 - `app.py` - Flask web interface backend
 - `templates/` - Web interface HTML templates
-- `requirements.txt` - Python dependency management
+- `pyproject.toml` - Python dependency management with uv
 - `README_DESKTOP.md` - Desktop application documentation
-- `venv/` - Python virtual environment
 
 #### 🔄 Updated Files
 - `music-storage-manager.zsh` - Added --skip-nas option and improved logging
@@ -64,7 +63,7 @@ All notable changes to the Music Storage Manager project.
 
 #### 🔧 Technical Changes
 - **Python Backend**: Flask application with RESTful API endpoints
-- **Virtual Environment**: Isolated Python dependency management
+- **uv Package Management**: Modern Python dependency management
 - **PyWebView Integration**: Native desktop app experience
 - **Bootstrap UI**: Modern, responsive web interface
 - **Log API**: Programmatic access to logs and statistics
@@ -73,7 +72,7 @@ All notable changes to the Music Storage Manager project.
 
 **Desktop App:**
 ```bash
-python desktop_app.py
+uv run python desktop_app.py
 ```
 
 **Command Line with New Options:**
@@ -83,12 +82,12 @@ python desktop_app.py
 
 **Web Interface:**
 ```bash
-python desktop_app.py --web
+uv run python desktop_app.py --web
 ```
 
 ### 🚀 Migration Guide
 
-1. **Install Dependencies**: `pip install -r requirements.txt`
+1. **Install Dependencies**: `uv sync`
 2. **Test New Features**: Use `--skip-nas` for initial testing
 3. **Backup Rules**: Existing rules are preserved and enhanced
 4. **Choose Interface**: Desktop app, web interface, or command line

@@ -6,14 +6,12 @@ Your Flask app has been converted to a native Mac desktop application using PyWe
 
 **Desktop Mode (Recommended):**
 ```bash
-source venv/bin/activate
-python desktop_app.py
+uv run python desktop_app.py
 ```
 
 **Web Mode (Original):**
 ```bash
-source venv/bin/activate
-python desktop_app.py --web
+uv run python desktop_app.py --web
 ```
 
 ## Features
@@ -26,21 +24,19 @@ python desktop_app.py --web
 
 ## Installation
 
-1. Create virtual environment and install dependencies:
+1. Install dependencies:
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 2. Run the desktop app:
 ```bash
-python desktop_app.py
+uv run python desktop_app.py
 ```
 
 ## Files Added
 
 - `desktop_app.py` - Main desktop wrapper application
-- Updated `requirements.txt` with PyWebView dependencies
+- `pyproject.toml` - Project configuration with uv dependency management
 
 The original Flask app (`app.py`) remains unchanged and can still be used independently.

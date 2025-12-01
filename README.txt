@@ -35,17 +35,14 @@ A comprehensive tool for managing music libraries across SSD, NAS, and local sto
 
 ### 1. Install Dependencies
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 ### 2. Choose Your Interface
 
 **Desktop App (Recommended):**
 ```bash
-source venv/bin/activate
-python desktop_app.py
+uv run python desktop_app.py
 ```
 
 **Command Line:**
@@ -55,8 +52,7 @@ python desktop_app.py
 
 **Web Interface:**
 ```bash
-source venv/bin/activate
-python desktop_app.py --web
+uv run python desktop_app.py --web
 ```
 
 ### 3. Configure Storage Locations
@@ -161,9 +157,8 @@ export MSM_SKIP_NAS_MOUNT=1
 
 **Desktop App Won't Start:**
 ```bash
-# Install PyWebView dependencies
-source venv/bin/activate
-pip install -r requirements.txt
+# Install dependencies
+uv sync
 ```
 
 **NAS Mount Issues:**
@@ -182,5 +177,5 @@ open "smb://your-nas-server/Music"
 
 1. **Backup your rules**: Copy existing `.music-storage-rules.csv`
 2. **Update rules format**: Use new unified CSV format
-3. **Install new dependencies**: Run `pip install -r requirements.txt`
+3. **Install new dependencies**: Run `uv sync`
 4. **Test with dry run**: Use `--skip-nas` for initial testing
